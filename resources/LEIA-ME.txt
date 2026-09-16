@@ -1,0 +1,384 @@
+===============================================================================
+
+                            O R D O   C A D E N T I A
+                        SINCRONIZADOR DE QUADROS · v1.0
+
+                Faz 30 FPS no computador parecerem 30 FPS
+                             num videogame.
+
+===============================================================================
+
+
+O QUE É ISSO
+-------------------------------------------------------------------------------
+
+Um programa que conserta a sensação de travado que 30 FPS têm no computador
+e não têm no console.
+
+Não é impressão sua. É um problema real, com causa conhecida, e a maior
+parte dele tem conserto.
+
+Ele faz duas coisas:
+
+  1. Trava a taxa do seu monitor na que você escolher, de 60 Hz até o
+     máximo que o monitor aguenta.
+
+  2. Ajusta o Windows e o monitor em volta de um jogo específico, para que
+     os quadros desse jogo caiam na tela em intervalos iguais.
+
+
+POR QUE 30 FPS TREME NO PC E NÃO TREME NO CONSOLE
+-------------------------------------------------------------------------------
+
+O monitor não mostra imagem quando o jogo quer. Ele mostra a cada
+"atualização", num ritmo fixo. Um monitor de 60 Hz atualiza 60 vezes por
+segundo; um de 165 Hz atualiza 165 vezes.
+
+Com VSync ligado, um quadro novo só pode aparecer numa dessas atualizações.
+Nunca no meio.
+
+Então tudo depende de uma conta simples:
+
+        Hz do monitor ÷ quadros por segundo
+
+Se der um número INTEIRO, todo quadro espera a mesma quantidade de
+atualizações. O intervalo entre um quadro e outro é sempre igual. É liso.
+
+Se NÃO der inteiro, cada quadro espera ora um pouco, ora um pouco mais.
+O intervalo fica oscilando. Isso é o tremor (o "judder").
+
+Veja o que acontece com 30 FPS:
+
+    Console na TV:      60 ÷ 30 = 2,0   → 2, 2, 2, 2, 2...
+                                          33,3 ms sempre. LISO.
+
+    PC a 165 Hz:       165 ÷ 30 = 5,5   → 5, 6, 5, 6, 5, 6...
+                                          30,3 ms / 36,4 ms / 30,3 ms...
+                                          TREME.
+
+É por isso que o console entrega 30 FPS que parecem bons e o PC entrega
+30 FPS que parecem quebrados. Não é a placa de vídeo. É a divisão.
+
+O console leva vantagem porque a TV dele é 60 Hz e o jogo trava em 30.
+2 é inteiro. Fim.
+
+Um monitor de 165 Hz é MELHOR que a TV — mas 165 é um número ruim para 30.
+
+O Ordo Cadentia resolve isso colocando o monitor numa taxa que divida
+exato (120 Hz, por exemplo: 120 ÷ 30 = 4) enquanto você joga, e devolvendo
+tudo ao normal quando você termina.
+
+A tela ANTES E DEPOIS mostra isso desenhado: cada bloco é um quadro, e a
+largura do bloco é quanto tempo ele fica na tela. Blocos de larguras
+diferentes são o tremor. Blocos iguais são o console.
+
+
+TRAVAR A TAXA DO MONITOR
+-------------------------------------------------------------------------------
+
+Na seção 3 da tela principal o programa faz uma varredura no monitor e
+mostra todas as taxas que ele aceita, de 60 Hz até o máximo. Escolha uma
+e clique em TRAVAR O MONITOR EM ___ Hz.
+
+O que o travamento faz:
+
+  - coloca o monitor na taxa escolhida na hora;
+  - mantém ali. Se alguma coisa mudar a taxa por baixo (um jogo, o driver
+    de vídeo), o programa percebe e devolve;
+  - não precisa de jogo nenhum escolhido. Serve só para deixar o monitor
+    onde você quer.
+
+O que ele NÃO faz:
+
+  - não é permanente. A trava vale enquanto o programa estiver aberto.
+    Fechou o programa, o monitor volta sozinho para a taxa de antes.
+    Isso é de propósito: assim nenhuma configuração sua fica alterada
+    pelas costas, e um travamento ruim se desfaz só de fechar o programa.
+    Se você quer uma taxa permanente, mude nas Configurações de Vídeo do
+    próprio Windows.
+
+Taxas abaixo de 60 Hz não aparecem na lista. Alguns monitores oferecem
+modos de 48 Hz ou menos e eles só atrapalhariam a escolha.
+
+Se um jogo em TELA CHEIA EXCLUSIVA insistir em mudar a taxa, o programa
+tenta repor três vezes e depois desiste — ficar brigando só faria a tela
+piscar sem parar. Nesse caso, use o jogo em janela sem bordas.
+
+QUEM MANDA, SE OS DOIS QUISEREM MUDAR A TAXA
+
+A trava manual sempre ganha. Se o monitor está travado e você ativa o
+programa em cima de um jogo, ele respeita a trava, não mexe na taxa, e
+diz no histórico que manteve. Desativar também não solta a trava — só o
+botão DESTRAVAR solta, ou fechar o programa.
+
+
+OS SEIS AJUSTES
+-------------------------------------------------------------------------------
+
+SINCRONIZAR A TELA
+    O principal. Coloca o monitor na maior taxa disponível que divida
+    exato o número de quadros que chegam na tela. É a diferença entre
+    tremer e não tremer. É temporário: desativou ou fechou, o monitor
+    volta.
+
+AFINAR O TEMPORIZADOR
+    Pede ao Windows o temporizador mais fino que ele tem (0,5 ms em vez
+    de 15,6 ms). Um limitador de quadros acerta 33,33 ms com muito mais
+    precisão quando o relógio do sistema é fino.
+    Leia a seção TEMPORIZADOR GLOBAL mais abaixo — tem uma pegadinha do
+    Windows 10/11 aqui.
+
+PRIORIDADE ALTA
+    Põe o jogo na frente do resto da fila do processador. Menos chance de
+    um programa qualquer roubar a CPU bem na hora em que o quadro estava
+    sendo montado.
+
+NÚCLEOS DE DESEMPENHO
+    Só aparece em processadores híbridos (Intel de 12ª geração em diante,
+    com núcleos P e E). Prende o jogo nos núcleos de desempenho. Quando
+    uma thread do jogo escorrega para um núcleo de eficiência, o quadro
+    atrasa e você vê o engasgo. Isso impede o escorregão.
+
+DESLIGAR OTIMIZAÇÕES DE TELA CHEIA
+    As "Otimizações de Tela Cheia" do Windows colocam uma camada a mais
+    entre o jogo e a tela, e costumam bagunçar a cadência em modo janela
+    sem bordas. Isto desliga essa camada para aquele executável.
+    ATENÇÃO: só passa a valer na PRÓXIMA vez que o jogo abrir.
+
+REDUZIR PROGRAMAS DE FUNDO
+    Rebaixa a prioridade de navegador, Discord, Spotify, Steam e afins
+    enquanto você joga. Não fecha nada, e devolve todos ao normal no fim.
+
+
+COMO USAR — PASSO A PASSO
+-------------------------------------------------------------------------------
+
+1. LIMITE O JOGO NO FPS QUE VOCÊ QUER.
+
+   Isto o programa NÃO faz por você (veja a seção O QUE ELE NÃO FAZ).
+   Limite em um destes lugares:
+
+     - no menu de opções do próprio jogo (procure "Limite de FPS"), ou
+     - no painel da NVIDIA / AMD (limitador de taxa de quadros), ou
+     - no RivaTuner (RTSS), que é o mais preciso de todos.
+
+2. LIGUE O VSYNC NO JOGO.
+
+   Sem VSync o quadro aparece no meio da atualização e nada disso
+   funciona. Se seu monitor tem G-Sync ou FreeSync, deixe ligado também.
+
+3. ESCOLHA A JANELA DO JOGO.
+
+   Botão ESCOLHER JANELA, ou APONTAR para clicar direto na janela do jogo.
+
+4. NA SEÇÃO 2, INFORME O MESMO FPS QUE VOCÊ LIMITOU.
+
+   Se estiver usando geração de quadros, marque o multiplicador
+   (veja a próxima seção — isso muda a conta).
+
+5. CONFIRA O ANTES E DEPOIS.
+
+   A fita de cima é como está agora. A de baixo é como vai ficar.
+
+6. CLIQUE EM ATIVAR.
+
+Pode minimizar a janela e ir jogar — os ajustes continuam valendo.
+Quando terminar, clique em DESATIVAR, ou simplesmente feche o programa.
+Tudo volta ao que era.
+
+
+GERAÇÃO DE QUADROS (FRAME GEN) — LEIA ISTO
+-------------------------------------------------------------------------------
+
+Se você usa DLSS Frame Generation, FSR Frame Generation ou AFMF, a conta
+MUDA — e muda de um jeito que a maioria das pessoas erra.
+
+A placa renderiza 30 quadros, mas INVENTA quadros no meio. O que chega no
+monitor não é 30. Com multiplicador 2×, chega 60.
+
+    30 renderizados  ×  2  =  60 QUADROS NA TELA
+
+E a taxa do monitor tem que casar com os 60, não com os 30:
+
+    Sem frame gen:  o monitor precisa ser múltiplo de 30  (60, 120...)
+    Com FG 2×:      o monitor precisa ser múltiplo de 60  (60, 120...)
+    Com FG 3×:      o monitor precisa ser múltiplo de 90  (90, 180...)
+
+Por isso o multiplicador está na tela principal: marque-o corretamente,
+ou o programa vai calcular a taxa errada.
+
+Dois avisos honestos sobre frame gen:
+
+  - Frame gen deixa a imagem mais lisa, mas NÃO deixa o jogo mais
+    responsivo. Com base em 30, o controle continua respondendo como 30.
+    A imagem engana; a mão não.
+
+  - Frame gen precisa de folga. Se a tela tem 60 Hz e o FG está
+    produzindo 60, não sobra margem nenhuma.
+
+
+TEMPORIZADOR GLOBAL — A PEGADINHA DO WINDOWS 10/11
+-------------------------------------------------------------------------------
+
+Até o Windows 10 versão 1909, quando um programa pedia um temporizador
+mais fino, o sistema INTEIRO ficava mais fino. Valia para todo mundo.
+
+A partir da versão 2004, a Microsoft mudou: o pedido passou a valer só
+para quem pediu.
+
+Ou seja: o Ordo Cadentia pede 0,5 ms e recebe 0,5 ms — mas o JOGO
+continua com o relógio grosso. Quando isso acontece, o ajuste AFINAR O
+TEMPORIZADOR aparece marcado como "parcial" e o histórico avisa.
+
+Para voltar ao comportamento antigo existe uma chave do Windows. Ela
+exige privilégio de administrador e REINICIAR o computador:
+
+    HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel
+    GlobalTimerResolutionRequests  (DWORD) = 1
+
+Isso não é uma chave secreta nem uma gambiarra: é documentada pela
+própria Microsoft. Mas mexe no sistema todo, então a decisão é sua — o
+Ordo Cadentia apenas consulta essa chave e informa, nunca a escreve.
+
+Os outros cinco ajustes funcionam normalmente sem ela. E o de maior
+efeito — SINCRONIZAR A TELA — não depende dela.
+
+
+O QUE O PROGRAMA NÃO FAZ
+-------------------------------------------------------------------------------
+
+Isto aqui é importante e merece franqueza.
+
+ELE NÃO LIMITA O JOGO EM 30 FPS.
+
+Para impor um limite de quadros a um jogo, um programa precisa injetar
+código dentro do processo do jogo — é assim que o RivaTuner funciona.
+Isso é justamente o tipo de coisa que sistemas anticheat interpretam
+como ataque, e podem banir a conta.
+
+O Ordo Cadentia não injeta nada em processo nenhum. Ele não lê nem
+escreve a memória do jogo. Ele mexe apenas em coisas do SISTEMA: taxa do
+monitor, temporizador, prioridade e afinidade de processo.
+
+Por isso a divisão de trabalho é esta:
+
+    VOCÊ limita o jogo em 30 (no jogo, no driver ou no RTSS).
+    O ORDO CADENTIA faz esses 30 caírem certinho na tela.
+
+A segunda metade é a que conserta a sensação de travado. Um jogo limitado
+em 30 sem a taxa do monitor alinhada continua tremendo, por melhor que
+seja o limitador.
+
+Ele também não aumenta FPS, não melhora gráficos e não faz milagre em
+jogo que está rodando mal por falta de hardware.
+
+
+PERGUNTAS QUE VÃO APARECER
+-------------------------------------------------------------------------------
+
+"Meu monitor não tem nenhuma taxa que divida 30."
+
+    Acontece com monitores de 144 Hz sem modo de 120 ou 60
+    (144 ÷ 30 = 4,8). Nesse caso o programa escolhe a taxa de menor
+    oscilação e avisa que não ficou perfeito. Alternativa: jogar a 24 FPS
+    (144 ÷ 24 = 6) ou a 48 (144 ÷ 48 = 3), que dividem exato nesse monitor.
+
+"A tela pisca quando ativo ou travo."
+
+    É normal. Trocar a taxa do monitor sempre apaga a tela por um
+    instante, igual quando você troca a resolução.
+
+"Fechei tudo no tranco e o monitor ficou na taxa errada."
+
+    Abra o programa de novo. Ele guarda um bilhete de socorro e devolve a
+    taxa original sozinho ao abrir.
+
+"O jogo está em tela cheia exclusiva e nada muda."
+
+    Em tela cheia exclusiva o jogo comanda o modo de vídeo, não o Windows.
+    Use o jogo em JANELA SEM BORDAS, ou trave a taxa ANTES de abrir o jogo.
+
+"Preciso mesmo de administrador?"
+
+    Para jogos comuns, não. Mas jogos com anticheat rodam elevados, e sem
+    privilégio de administrador os ajustes PRIORIDADE ALTA e NÚCLEOS DE
+    DESEMPENHO falham neles. Por isso o programa já pede elevação ao abrir.
+    O instalador NÃO pede.
+
+"Isso pode me dar ban?"
+
+    O Ordo Cadentia não toca no processo do jogo. Ele usa as mesmas APIs
+    do Windows que o Gerenciador de Tarefas usa para mudar prioridade e
+    que o painel de configurações usa para mudar a taxa do monitor.
+    Ainda assim, a regra final é sempre do anticheat do jogo.
+
+"Meu antivírus reclamou."
+
+    Os executáveis não são assinados digitalmente, e o programa faz três
+    coisas que antivírus olham com desconfiança: muda o modo de vídeo,
+    mexe em prioridade de processo e (no caso do desinstalador) se apaga
+    sozinho. Nada disso é malicioso, mas o padrão lembra.
+
+
+ONDE FICAM OS ARQUIVOS
+-------------------------------------------------------------------------------
+
+Programa instalado:
+    %LOCALAPPDATA%\Programs\Ordo Cadentia
+
+Ajustes e arquivos de controle, em %LOCALAPPDATA%\OrdoCadentia:
+
+    settings.ini     suas escolhas (FPS, frame gen, taxa, ajustes marcados).
+                    Apagar este arquivo devolve tudo ao padrão de fábrica.
+
+    recovery.ini     só existe enquanto a taxa do monitor está alterada. É o
+                    bilhete que permite devolvê-la caso o programa morra no
+                    tranco.
+
+    fullscreen-flags.txt   lista dos executáveis em que o ajuste de otimizações de
+                    tela cheia mexeu, para que nada fique para trás se o
+                    programa não puder desfazer sozinho.
+
+
+DOIS AJUSTES QUE NÃO TÊM BOTÃO NA TELA
+-------------------------------------------------------------------------------
+
+Estão no settings.ini porque são de gosto pessoal e quase ninguém mexe.
+Feche o programa antes de editar, senão ele regrava o arquivo por cima.
+
+FollowFocus=False
+
+    Ligando (True), o monitor volta à taxa normal toda vez que você sai do
+    jogo (alt-tab), e volta à taxa ajustada quando você retorna.
+    Vem desligado porque cada troca apaga a tela por um instante — e
+    alternar muito vira um festival de piscadas.
+    Não tem efeito enquanto a taxa estiver travada na mão.
+
+MinimizeToTray=True
+
+    Com o programa ativo (ou com o monitor travado), minimizar esconde o
+    ícone ao lado do relógio em vez de mandá-lo para a barra de tarefas.
+    Desligue (False) se preferir que ele fique sempre na barra de tarefas.
+    Sem nada valendo, minimizar é sempre o normal: barra de tarefas.
+
+
+O Ordo Cadentia não instala serviço, não instala driver, não cria tarefa
+agendada, não inicia com o Windows e não acessa a internet.
+
+
+COMO DESINSTALAR
+-------------------------------------------------------------------------------
+
+Qualquer um destes caminhos:
+
+    - Menu Iniciar → pasta Ordo Cadentia → "Desinstalar o Ordo Cadentia"
+    - Configurações do Windows → Aplicativos → Ordo Cadentia → Desinstalar
+    - A própria pasta de instalação → Desinstalar.exe
+
+O desinstalador desfaz qualquer marca deixada no registro, apaga os
+atalhos e remove a pasta. Ele pergunta se você quer manter seus ajustes.
+
+
+===============================================================================
+ Ordo Cadentia v1.0 — quadros em intervalos iguais, como num console.
+===============================================================================

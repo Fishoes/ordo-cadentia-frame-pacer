@@ -1,0 +1,107 @@
+TEXT FOR THE GITHUB REPOSITORY DESCRIPTION
+===============================================================================
+
+GitHub's "About" box sits at the top right of the repository page, behind the
+little gear icon next to the word "About". It takes up to 350 characters and
+shows up in search results.
+
+Pick ONE of the options below.
+
+
+-------------------------------------------------------------------------------
+OPTION 1 — the most direct (recommended)          183 characters
+-------------------------------------------------------------------------------
+
+Makes 30 FPS on a PC feel like 30 FPS on a console. Locks your monitor to a refresh rate that divides evenly into your frame rate, so frames land at even intervals instead of stuttering.
+
+
+-------------------------------------------------------------------------------
+OPTION 2 — explains the why                       229 characters
+-------------------------------------------------------------------------------
+
+30 FPS stutters on PC because 165 divided by 30 isn't a whole number, so frames wait uneven amounts of time. This fixes that: it switches your monitor to a rate that divides evenly while you play, and puts it back afterwards.
+
+
+-------------------------------------------------------------------------------
+OPTION 3 — the shortest                           118 characters
+-------------------------------------------------------------------------------
+
+A frame pacer for Windows. Makes capped 30 FPS look as smooth on a PC as it does on a console. No injection, no drivers.
+
+
+-------------------------------------------------------------------------------
+OPTION 4 — for people who already know the topic  205 characters
+-------------------------------------------------------------------------------
+
+Windows frame pacing tool. Aligns your display's refresh rate to your capped frame rate so every frame gets the same number of vblanks. Also does P-core pinning, timer resolution and priority. No hooks.
+
+
+===============================================================================
+TOPICS
+===============================================================================
+
+The same "About" panel has a "Topics" field. Topics help people find the
+project. Suggestions — add them one at a time:
+
+    frame-pacing
+    windows
+    gaming
+    refresh-rate
+    stutter
+    judder
+    vsync
+    frametime
+    csharp
+    winforms
+    dotnet
+    fps-limiter
+    game-optimization
+
+
+===============================================================================
+WEBSITE
+===============================================================================
+
+The "Website" field, just above Topics, can point at your downloads page. That
+way anyone landing on the repository finds the installer in one click:
+
+    https://github.com/YOUR-USERNAME/ordo-cadentia-frame-pacer/releases
+
+
+===============================================================================
+TEXT FOR THE FIRST RELEASE
+===============================================================================
+
+When you create the release (Releases tab -> Create a new release):
+
+  Tag:    v1.0
+  Title:  Ordo Cadentia v1.0
+
+  Description:
+
+Download Instalar-OrdoCadentia.exe below and run it. Pick your language
+(English, Portugues or Espanol) and click Install.
+
+No administrator permission needed. No drivers, no services, nothing that
+starts with Windows.
+
+WHAT'S IN THIS RELEASE
+
+- Locks your monitor's refresh rate anywhere from 60 Hz to its maximum
+- Syncs the refresh rate to your game's capped frame rate so frames land at
+  even intervals
+- Frame generation support (2x, 3x, 4x) with the correct math
+- High priority, performance-core pinning, fullscreen optimization control
+  and background program quieting
+- Interface and instructions in English, Portuguese and Spanish
+- Everything it changes, it changes back - including after a crash
+
+Your antivirus may warn you: these files are not digitally signed, and the
+program changes display settings and process priorities. Nothing here is
+harmful, but the pattern resembles what antivirus software watches for.
+
+Files to attach to the release (drag them from the dist\ folder):
+
+    Instalar-OrdoCadentia.exe     <- the main one, this is what people download
+    OrdoCadentia.exe              <- optional, for people who skip installers
+    README.txt                    <- optional

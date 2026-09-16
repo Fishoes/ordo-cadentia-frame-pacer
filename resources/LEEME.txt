@@ -1,0 +1,400 @@
+===============================================================================
+
+                            O R D O   C A D E N T I A
+                    SINCRONIZADOR DE FOTOGRAMAS · v1.0
+
+                Hace que 30 FPS en la PC se sientan como
+                          30 FPS en una consola.
+
+===============================================================================
+
+
+QUE ES ESTO
+-------------------------------------------------------------------------------
+
+Un programa que arregla esa sensacion de tironeo que tienen los 30 FPS en
+la computadora y no tienen en una consola.
+
+No es tu imaginacion. Es un problema real, con una causa conocida, y la
+mayor parte tiene arreglo.
+
+Hace dos cosas:
+
+  1. Fija la frecuencia de tu monitor en la que elijas, desde 60 Hz hasta
+     el maximo que tu monitor admita.
+
+  2. Ajusta Windows y el monitor alrededor de un juego concreto, para que
+     los fotogramas de ese juego caigan en la pantalla a intervalos
+     iguales.
+
+
+POR QUE 30 FPS TIEMBLAN EN LA PC Y NO EN LA CONSOLA
+-------------------------------------------------------------------------------
+
+El monitor no muestra imagen cuando el juego quiere. Se actualiza a un
+ritmo fijo. Un monitor de 60 Hz se actualiza 60 veces por segundo; uno de
+165 Hz se actualiza 165 veces.
+
+Con VSync activado, un fotograma nuevo solo puede aparecer en una de esas
+actualizaciones. Nunca en el medio.
+
+Asi que todo depende de una division simple:
+
+        Hz del monitor  ÷  fotogramas por segundo
+
+Si da un numero ENTERO, cada fotograma espera la misma cantidad de
+actualizaciones. El intervalo entre uno y otro es siempre igual. Es fluido.
+
+Si NO da entero, cada fotograma espera ora un poco, ora un poco mas. El
+intervalo oscila. Eso es el temblor — el "judder".
+
+Mira lo que pasa con 30 FPS:
+
+    Consola en un TV:   60 ÷ 30 = 2,0   → 2, 2, 2, 2, 2...
+                                          33,3 ms siempre. FLUIDO.
+
+    PC a 165 Hz:       165 ÷ 30 = 5,5   → 5, 6, 5, 6, 5, 6...
+                                          30,3 ms / 36,4 ms / 30,3 ms...
+                                          TIEMBLA.
+
+Por eso la consola entrega 30 FPS que se ven bien y la PC entrega 30 FPS
+que se ven rotos. No es tu tarjeta de video. Es la division.
+
+La consola lleva ventaja porque su TV es de 60 Hz y el juego esta
+limitado a 30. Dos es entero. Fin.
+
+Un monitor de 165 Hz es MEJOR que ese TV — pero 165 es un mal numero
+para 30.
+
+Ordo Cadentia lo resuelve poniendo el monitor en una frecuencia que
+divida exacto mientras juegas, y devolviendo todo a la normalidad cuando
+terminas.
+
+El panel ANTES Y DESPUES lo dibuja: cada bloque es un fotograma, y el
+ancho del bloque es cuanto tiempo se queda en pantalla. Bloques de anchos
+distintos son el temblor. Bloques iguales son la consola.
+
+
+FIJAR LA FRECUENCIA DEL MONITOR
+-------------------------------------------------------------------------------
+
+La seccion 3 de la pantalla principal analiza tu monitor y lista todas
+las frecuencias que admite, desde 60 Hz hasta el maximo. Elige una y haz
+clic en FIJAR EL MONITOR EN ___ Hz.
+
+Lo que hace el bloqueo:
+
+  - pone el monitor en la frecuencia elegida al instante;
+  - la mantiene ahi. Si algo cambia la frecuencia por debajo (un juego,
+    el controlador de video), el programa lo nota y la devuelve;
+  - no necesita ningun juego elegido. Sirve solo para dejar el monitor
+    donde tu quieras.
+
+Lo que NO hace:
+
+  - no es permanente. El bloqueo vale mientras el programa este abierto.
+    Cierras el programa y el monitor vuelve solo a la frecuencia
+    anterior. Es a proposito: asi ninguna configuracion tuya queda
+    cambiada a tus espaldas, y un bloqueo malo se deshace con solo cerrar
+    el programa. Si quieres una frecuencia permanente, cambiala en la
+    Configuracion de Pantalla de Windows.
+
+Las frecuencias por debajo de 60 Hz no aparecen en la lista. Algunos
+monitores ofrecen modos de 48 Hz o menos y solo ensuciarian la eleccion.
+
+Si un juego en PANTALLA COMPLETA EXCLUSIVA insiste en cambiar la
+frecuencia, el programa intenta reponerla tres veces y despues se rinde —
+pelear solo haria parpadear la pantalla sin parar. En ese caso, usa
+ventana sin bordes.
+
+QUIEN MANDA SI LOS DOS QUIEREN LA FRECUENCIA
+
+El bloqueo manual siempre gana. Si el monitor esta fijado y activas el
+programa sobre un juego, este respeta el bloqueo, no toca la frecuencia,
+y lo dice en el registro. Desactivar tampoco suelta el bloqueo — solo lo
+suelta el boton LIBERAR, o cerrar el programa.
+
+
+LOS SEIS AJUSTES
+-------------------------------------------------------------------------------
+
+SINCRONIZAR LA PANTALLA
+    El principal. Pone el monitor en la frecuencia mas alta disponible
+    que divida exacto los fotogramas que llegan a la pantalla. Es lo que
+    separa temblar de no temblar. Es temporal: desactivas o cierras, y el
+    monitor vuelve.
+
+AFINAR EL TEMPORIZADOR
+    Le pide a Windows el temporizador mas fino que tiene (0,5 ms en vez
+    de 15,6 ms). Un limitador de fotogramas acierta los 33,33 ms con
+    mucha mas precision cuando el reloj del sistema es fino.
+    Lee la seccion TEMPORIZADOR GLOBAL mas abajo — ahi hay una trampa de
+    Windows 10/11.
+
+PRIORIDAD ALTA
+    Pone el juego adelante en la cola del procesador. Menos probabilidad
+    de que un programa cualquiera se robe la CPU justo cuando el
+    fotograma se estaba armando.
+
+NUCLEOS DE RENDIMIENTO
+    Solo aparece en procesadores hibridos (Intel de 12a generacion en
+    adelante, con nucleos P y E). Fija el juego en los nucleos de
+    rendimiento. Cuando un hilo del juego se escurre a un nucleo de
+    eficiencia, el fotograma llega tarde y ves el tiron. Esto lo impide.
+
+DESACTIVAR OPTIMIZACIONES DE PANTALLA COMPLETA
+    Las "Optimizaciones de pantalla completa" de Windows ponen una capa
+    de mas entre el juego y la pantalla, y suelen estropear la cadencia
+    en modo ventana sin bordes. Esto desactiva esa capa para ese
+    ejecutable.
+    ATENCION: solo tiene efecto la PROXIMA vez que abras el juego.
+
+REDUCIR PROGRAMAS EN SEGUNDO PLANO
+    Baja la prioridad del navegador, Discord, Spotify, Steam y similares
+    mientras juegas. No cierra nada, y devuelve todo a la normalidad al
+    terminar.
+
+
+COMO USARLO — PASO A PASO
+-------------------------------------------------------------------------------
+
+1. LIMITA EL JUEGO A LOS FPS QUE QUIERAS.
+
+   Esto el programa NO lo hace por ti (mira la seccion LO QUE NO HACE).
+   Limitalo en alguno de estos lugares:
+
+     - en el menu de opciones del propio juego (busca "limite de FPS"), o
+     - en el panel de NVIDIA / AMD (limitador de tasa de fotogramas), o
+     - en RivaTuner (RTSS), que es el mas preciso de todos.
+
+2. ACTIVA VSYNC EN EL JUEGO.
+
+   Sin VSync el fotograma aparece en medio de la actualizacion y nada de
+   esto funciona. Si tu monitor tiene G-Sync o FreeSync, dejalo activado
+   tambien.
+
+3. ELIGE LA VENTANA DEL JUEGO.
+
+   Boton ELEGIR VENTANA, o APUNTAR para hacer clic directo en la ventana
+   del juego.
+
+4. EN LA SECCION 2, INDICA LOS MISMOS FPS QUE LIMITASTE.
+
+   Si usas generacion de fotogramas, marca el multiplicador
+   (mira la siguiente seccion — eso cambia la cuenta).
+
+5. REVISA EL ANTES Y DESPUES.
+
+   La franja de arriba es como esta ahora. La de abajo es como quedara.
+
+6. HAZ CLIC EN ACTIVAR.
+
+Puedes minimizar la ventana e ir a jugar — los ajustes siguen activos.
+Cuando termines, haz clic en DESACTIVAR, o simplemente cierra el
+programa. Todo vuelve a como estaba.
+
+
+GENERACION DE FOTOGRAMAS (FRAME GEN) — LEE ESTO
+-------------------------------------------------------------------------------
+
+Si usas DLSS Frame Generation, FSR Frame Generation o AFMF, la cuenta
+CAMBIA — y cambia de una manera que la mayoria se equivoca.
+
+La tarjeta genera 30 fotogramas, pero INVENTA fotogramas en el medio. Lo
+que llega al monitor no es 30. Con multiplicador 2x, llegan 60.
+
+    30 generados  ×  2  =  60 FOTOGRAMAS EN PANTALLA
+
+Y la frecuencia tiene que casar con los 60, no con los 30:
+
+    Sin frame gen:  el monitor debe ser multiplo de 30  (60, 120...)
+    Con FG 2x:      el monitor debe ser multiplo de 60  (60, 120...)
+    Con FG 3x:      el monitor debe ser multiplo de 90  (90, 180...)
+
+Por eso el multiplicador esta en la pantalla principal: marcalo
+correctamente, o el programa calculara la frecuencia equivocada.
+
+Dos advertencias honestas sobre frame gen:
+
+  - Frame gen hace la imagen mas fluida, pero NO hace el juego mas
+    responsivo. Con base en 30, el control sigue respondiendo como 30.
+    La imagen engana; la mano no.
+
+  - Frame gen necesita margen. Si la pantalla es de 60 Hz y frame gen
+    esta produciendo 60, no queda margen ninguno.
+
+
+TEMPORIZADOR GLOBAL — LA TRAMPA DE WINDOWS 10/11
+-------------------------------------------------------------------------------
+
+Hasta Windows 10 version 1909, cuando un programa pedia un temporizador
+mas fino, el sistema ENTERO se volvia mas fino. Valia para todos.
+
+A partir de la version 2004, Microsoft lo cambio: la peticion pasa a
+valer solo para quien la pide.
+
+O sea: Ordo Cadentia pide 0,5 ms y recibe 0,5 ms — pero el JUEGO sigue
+con el reloj grueso. Cuando eso pasa, el ajuste AFINAR EL TEMPORIZADOR
+aparece marcado como "parcial" y el registro lo avisa.
+
+Para volver al comportamiento anterior existe una clave de Windows.
+Exige privilegios de administrador y REINICIAR la computadora:
+
+    HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\kernel
+    GlobalTimerResolutionRequests  (DWORD) = 1
+
+No es una clave secreta ni un truco raro: la documenta la propia
+Microsoft. Pero toca el sistema entero, asi que la decision es tuya —
+Ordo Cadentia solo consulta esa clave e informa, nunca la escribe.
+
+Los otros cinco ajustes funcionan bien sin ella. Y el de mayor efecto —
+SINCRONIZAR LA PANTALLA — no depende de ella.
+
+
+LO QUE EL PROGRAMA NO HACE
+-------------------------------------------------------------------------------
+
+Esto importa y merece franqueza.
+
+NO LIMITA EL JUEGO A 30 FPS.
+
+Para imponerle un limite de fotogramas a un juego, un programa tiene que
+inyectar codigo dentro del proceso del juego — asi funciona RivaTuner, y
+es justo el tipo de cosa que los sistemas anticheat interpretan como un
+ataque, y pueden banear la cuenta.
+
+Ordo Cadentia no inyecta nada en ningun proceso. No lee ni escribe la
+memoria de ningun juego. Solo toca cosas del SISTEMA: frecuencia del
+monitor, temporizador, prioridad y afinidad de proceso.
+
+Por eso el reparto de trabajo es este:
+
+    TU limitas el juego a 30 (en el juego, el driver o RTSS).
+    ORDO CADENTIA hace que esos 30 caigan parejos en la pantalla.
+
+La segunda mitad es la que arregla la sensacion de tironeo. Un juego
+limitado a 30 sin la frecuencia del monitor alineada sigue temblando, por
+bueno que sea el limitador.
+
+Tampoco aumenta los FPS, no mejora los graficos y no hace milagros en un
+juego que va mal por falta de hardware.
+
+
+PREGUNTAS QUE VAN A SURGIR
+-------------------------------------------------------------------------------
+
+"Mi monitor no tiene ninguna frecuencia que divida 30."
+
+    Pasa con monitores de 144 Hz sin modo de 120 o 60
+    (144 ÷ 30 = 4,8). En ese caso el programa elige la frecuencia de
+    menor oscilacion y avisa que no quedo perfecto. Alternativa: jugar a
+    24 FPS (144 ÷ 24 = 6) o a 48 (144 ÷ 48 = 3), que dividen exacto en
+    ese monitor.
+
+"La pantalla parpadea cuando activo o fijo."
+
+    Es normal. Cambiar la frecuencia del monitor siempre apaga la
+    pantalla un instante, igual que al cambiar la resolucion.
+
+"Se cerro todo de golpe y el monitor quedo en la frecuencia equivocada."
+
+    Abre el programa de nuevo. Deja una nota de rescate y devuelve la
+    frecuencia original solo, al abrir.
+
+"El juego esta en pantalla completa exclusiva y no cambia nada."
+
+    En pantalla completa exclusiva el juego manda sobre el modo de video,
+    no Windows. Usa VENTANA SIN BORDES, o fija la frecuencia ANTES de
+    abrir el juego.
+
+"¿De verdad necesito administrador?"
+
+    Para juegos comunes, no. Pero los juegos con anticheat corren
+    elevados, y sin privilegios de administrador los ajustes PRIORIDAD
+    ALTA y NUCLEOS DE RENDIMIENTO fallan en ellos. Por eso el programa
+    pide elevacion al abrir. El instalador NO la pide.
+
+"¿Esto me puede dar un baneo?"
+
+    Ordo Cadentia no toca el proceso del juego. Usa las mismas APIs de
+    Windows que usa el Administrador de Tareas para cambiar prioridad y
+    que usa el panel de configuracion para cambiar la frecuencia. Aun
+    asi, la ultima palabra siempre es del anticheat de cada juego.
+
+"Mi antivirus se quejo."
+
+    Los ejecutables no estan firmados digitalmente, y el programa hace
+    tres cosas que los antivirus miran con desconfianza: cambia el modo
+    de video, cambia la prioridad de procesos y (en el caso del
+    desinstalador) se borra solo. Nada de eso es malicioso, pero el
+    patron se parece.
+
+
+DONDE ESTAN LOS ARCHIVOS
+-------------------------------------------------------------------------------
+
+Programa instalado:
+    %LOCALAPPDATA%\Programs\Ordo Cadentia
+
+Ajustes y archivos de control, en %LOCALAPPDATA%\OrdoCadentia:
+
+    settings.ini     tus elecciones (FPS, frame gen, frecuencia, ajustes y
+                    el idioma de la interfaz).
+                    Borrar este archivo devuelve todo a los valores de
+                    fabrica.
+
+    recovery.ini     solo existe mientras la frecuencia esta alterada. Es
+                    la nota que permite devolverla si el programa muere
+                    de forma inesperada.
+
+    fullscreen-flags.txt   lista de los ejecutables que el ajuste de
+                    optimizaciones de pantalla completa toco, para que
+                    nada quede atras si el programa no puede deshacerlo
+                    solo.
+
+
+DOS AJUSTES SIN BOTON EN PANTALLA
+-------------------------------------------------------------------------------
+
+Estan en settings.ini porque son cuestion de gusto y casi nadie los toca.
+Cierra el programa antes de editar, o lo sobrescribira.
+
+FollowFocus=False
+
+    Ponlo en True y el monitor vuelve a su frecuencia normal cada vez que
+    sales del juego (alt-tab), y regresa a la frecuencia ajustada cuando
+    vuelves.
+    Viene desactivado porque cada cambio apaga la pantalla un instante —
+    y alternar mucho se vuelve un festival de parpadeos.
+    No tiene efecto mientras la frecuencia este fijada a mano.
+
+MinimizeToTray=True
+
+    Con el programa activo (o el monitor fijado), minimizar lo esconde
+    junto al reloj en vez de mandarlo a la barra de tareas. Ponlo en
+    False si prefieres que siempre vaya a la barra de tareas.
+    Sin nada activo, minimizar es siempre lo normal: barra de tareas.
+
+
+Ordo Cadentia no instala servicio, no instala controlador, no crea tarea
+programada, no se inicia con Windows y no accede a internet.
+
+
+COMO DESINSTALAR
+-------------------------------------------------------------------------------
+
+Cualquiera de estos caminos:
+
+    - Menu Inicio → Ordo Cadentia → "DESINSTALAR Ordo Cadentia"
+    - Configuracion de Windows → Aplicaciones → Ordo Cadentia →
+      Desinstalar
+    - La propia carpeta de instalacion → Desinstalar.exe
+
+El desinstalador deshace cualquier marca que haya dejado en el registro,
+borra los accesos directos y elimina la carpeta. Pregunta si quieres
+conservar tus ajustes.
+
+
+===============================================================================
+ Ordo Cadentia v1.0 — fotogramas a intervalos iguales, como una consola.
+===============================================================================

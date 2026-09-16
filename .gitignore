@@ -1,0 +1,19 @@
+# Build output — none of this belongs in the repository.
+# Finished executables go in GitHub Releases, not versioned here.
+build/
+dist/
+
+# Screenshots in docs/ ARE versioned (the README uses them).
+# Throwaway captures are not:
+docs/tmp*.png
+*.tmp
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Editors
+.vs/
+.vscode/
+*.user
+*.suo
