@@ -8,6 +8,11 @@
 
 **Free · Windows 10 and 11 · Nothing else to install · Available in English, Português and Español**
 
+<img src="docs/demo.gif" alt="Ordo Cadentia in use" width="760">
+
+<sub>Aim at the game window, tell it your frame rate, press Activate. The strip on
+the right is the point: uneven blocks are the stutter, even blocks are the fix.</sub>
+
 </div>
 
 ---
