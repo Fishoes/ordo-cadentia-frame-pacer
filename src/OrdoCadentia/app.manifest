@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity version="1.0.0.0" name="OrdoCadentia" type="win32" />
-  <description>Ordo Cadentia — ritual de cadência de quadros</description>
+  <description>Ordo Cadentia — frame pacer</description>
 
-  <!-- Prioridade e afinidade de jogos elevados (anticheat) exigem elevação. -->
+  <!-- Priority and affinity on elevated (anti-cheat) games require elevation. -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
@@ -12,7 +12,7 @@
     </security>
   </trustInfo>
 
-  <!-- Sem isto o Windows finge ser Vista e o DPI/tema saem errados. -->
+  <!-- Without this Windows pretends to be Vista and DPI/theming come out wrong. -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
       <supportedOS Id="{e2011457-1546-43c5-a5fe-008deee3d3f0}" /><!-- Vista   -->

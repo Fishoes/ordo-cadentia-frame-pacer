@@ -65,7 +65,7 @@ WEBSITE
 The "Website" field, just above Topics, can point at your downloads page. That
 way anyone landing on the repository finds the installer in one click:
 
-    https://github.com/YOUR-USERNAME/ordo-cadentia-frame-pacer/releases
+    https://github.com/Fishoes/ordo-cadentia-frame-pacer/releases
 
 
 ===============================================================================
@@ -100,8 +100,31 @@ Your antivirus may warn you: these files are not digitally signed, and the
 program changes display settings and process priorities. Nothing here is
 harmful, but the pattern resembles what antivirus software watches for.
 
-Files to attach to the release (drag them from the dist\ folder):
+Files to attach to the release (drag ALL of them from the dist\ folder):
 
-    Instalar-OrdoCadentia.exe     <- the main one, this is what people download
-    OrdoCadentia.exe              <- optional, for people who skip installers
-    README.txt                    <- optional
+    Instalar-OrdoCadentia.exe     <- the main one, what most people download
+    OrdoCadentia.exe              <- REQUIRED by the terminal installer
+    Desinstalar.exe               <- REQUIRED by the terminal installer
+    LEIA-ME.txt                   <- instructions, Portuguese
+    README.txt                    <- instructions, English
+    LEEME.txt                     <- instructions, Spanish
+
+The last five are not optional: install.ps1 downloads them straight from the
+release. If OrdoCadentia.exe or Desinstalar.exe is missing, the one-line
+terminal install stops with an error telling people to download by hand.
+
+
+===============================================================================
+THE ONE-LINE TERMINAL INSTALL
+===============================================================================
+
+Once the release exists, this works and is already documented in the README:
+
+    irm https://raw.githubusercontent.com/Fishoes/ordo-cadentia-frame-pacer/main/install.ps1 | iex
+
+It reads the latest release through the GitHub API, downloads the files above
+and installs them. It needs no administrator rights and no token, so anyone
+can run it.
+
+Worth knowing: it always installs the LATEST release. Publish a new release and
+that same command starts serving the new version, with nothing to change here.

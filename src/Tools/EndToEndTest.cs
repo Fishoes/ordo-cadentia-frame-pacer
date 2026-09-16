@@ -7,15 +7,15 @@ using System.Linq;
 using System.Threading;
 using OrdoCadentia;
 
-static class Teste2E
+static class EndToEndTest
 {
-    static int falhas;
+    static int failures;
 
-    static void Conferir(string oque, bool ok, string detalhe)
+    static void Check(string what, bool ok, string detail)
     {
-        Console.WriteLine(string.Format("  [{0}] {1}{2}", ok ? "OK " : "FALHA", oque,
-            string.IsNullOrEmpty(detalhe) ? "" : "  -> " + detalhe));
-        if (!ok) falhas++;
+        Console.WriteLine(string.Format("  [{0}] {1}{2}", ok ? "OK " : "FAIL", what,
+            string.IsNullOrEmpty(detail) ? "" : "  -> " + detail));
+        if (!ok) failures++;
     }
 
     static void Title(string t)
@@ -27,304 +27,304 @@ static class Teste2E
     static int Main()
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
-        Console.WriteLine("TESTE PONTA A PONTA — ORDO CADENTIA");
-        Console.WriteLine("(a tela vai piscar duas vezes: e a troca de taxa e a volta)");
+        Console.WriteLine("ORDO CADENTIA END-TO-END TEST");
+        Console.WriteLine("(the screen will blink twice: the rate change and the change back)");
 
-        Process alvo = null;
-        int hzInicial = 0;
-        string dispositivo = null;
+        Process target = null;
+        int originalHz = 0;
+        string device = null;
 
         // This test writes and reads settings. Without backing up the real file, it
         // would leave the TEST's choices as the USER's choices.
-        string arquivoAjustes = System.IO.Path.Combine(Settings.Folder, "settings.ini");
-        string guardado = System.IO.File.Exists(arquivoAjustes)
-            ? System.IO.File.ReadAllText(arquivoAjustes) : null;
+        string settingsFile = System.IO.Path.Combine(Settings.Folder, "settings.ini");
+        string backup = System.IO.File.Exists(settingsFile)
+            ? System.IO.File.ReadAllText(settingsFile) : null;
 
-        var motor = new Engine();
+        var engine = new Engine();
 
         try
         {
             // ---------------------------------------------------- set up the target
-            Title("ALVO");
-            alvo = Process.Start(new ProcessStartInfo(System.IO.Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, "AlvoFalso.exe")) { UseShellExecute = false });
+            Title("TARGET");
+            target = Process.Start(new ProcessStartInfo(System.IO.Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "DummyTarget.exe")) { UseShellExecute = false });
             Thread.Sleep(1800);
 
-            var janela = Target.List().FirstOrDefault(j => j.Pid == (uint)alvo.Id);
-            Conferir("achou a janela do alvo", janela != null, janela == null ? null : janela.Process);
-            if (janela == null) return 1;
+            var window = Target.List().FirstOrDefault(j => j.Pid == (uint)target.Id);
+            Check("found the target window", window != null, window == null ? null : window.Process);
+            if (window == null) return 1;
 
-            Console.WriteLine("  alvo: " + janela.Process + " PID " + janela.Pid);
-            Console.WriteLine("  exe:  " + (janela.ExePath ?? "(desconhecido)"));
+            Console.WriteLine("  target: " + window.Process + " PID " + window.Pid);
+            Console.WriteLine("  exe:  " + (window.ExePath ?? "(unknown)"));
 
-            motor.CurrentTarget = janela;
-            motor.Config.RenderedFps = 30;
-            motor.Config.FgMultiplier = 1;
-            motor.Config.ChosenHz = 0;          // automatico
-            motor.Config.SyncDisplay = true;
-            motor.Config.SharpenTimer = true;
-            motor.Config.HighPriority = true;
-            motor.Config.PinPerformanceCores = true;
-            motor.Config.DisableFullscreenOpt = false;    // mexe no registro; testado a parte
-            motor.Config.QuietBackground = false;     // nao mexer nos programas do usuario
-            motor.Logged += (t, c) => Console.WriteLine("       | " + t);
+            engine.CurrentTarget = window;
+            engine.Config.RenderedFps = 30;
+            engine.Config.FgMultiplier = 1;
+            engine.Config.ChosenHz = 0;          // automatico
+            engine.Config.SyncDisplay = true;
+            engine.Config.SharpenTimer = true;
+            engine.Config.HighPriority = true;
+            engine.Config.PinPerformanceCores = true;
+            engine.Config.DisableFullscreenOpt = false;    // mexe no registro; testado a parte
+            engine.Config.QuietBackground = false;     // nao mexer nos programas do usuario
+            engine.Logged += (t, c) => Console.WriteLine("       | " + t);
 
-            dispositivo = motor.Device;
-            var modo = motor.CurrentMode2;
-            hzInicial = modo.Hz;
-            Console.WriteLine("  monitor antes: " + modo);
+            device = engine.Device;
+            var mode = engine.CurrentMode2;
+            originalHz = mode.Hz;
+            Console.WriteLine("  display before: " + mode);
 
-            Conferir("30 FPS na tela (sem frame gen)", motor.Config.FpsOnScreen == 30,
-                     motor.Config.FpsOnScreen.ToString());
-            Console.WriteLine("  taxa que o automatico escolheu: " + motor.TargetHz + " Hz");
-            Conferir("o automatico achou taxa exata para 30",
-                     motor.TargetHz > 0 && motor.TargetHz % 30 == 0, motor.TargetHz + " Hz");
+            Check("30 FPS on screen (no frame gen)", engine.Config.FpsOnScreen == 30,
+                     engine.Config.FpsOnScreen.ToString());
+            Console.WriteLine("  rate chosen by auto: " + engine.TargetHz + " Hz");
+            Check("auto found an exact rate for 30",
+                     engine.TargetHz > 0 && engine.TargetHz % 30 == 0, engine.TargetHz + " Hz");
 
-            var prioridadeAntes = alvo.PriorityClass;
-            var afinidadeAntes = alvo.ProcessorAffinity;
-            Console.WriteLine("  prioridade antes: " + prioridadeAntes);
-            Console.WriteLine("  afinidade antes:  0x" + ((long)afinidadeAntes).ToString("X"));
+            var priorityBefore = target.PriorityClass;
+            var affinityBefore = target.ProcessorAffinity;
+            Console.WriteLine("  priority before: " + priorityBefore);
+            Console.WriteLine("  affinity before: 0x" + ((long)affinityBefore).ToString("X"));
 
             // ---------------------------------------------------- run it
-            Title("ATIVAR");
-            motor.Activate();
-            Thread.Sleep(2500);                    // a troca de modo demora
+            Title("ACTIVATE");
+            engine.Activate();
+            Thread.Sleep(2500);                    // a troca de mode demora
 
-            Conferir("motor ficou ativo", motor.Active, null);
+            Check("engine became active", engine.Active, null);
 
-            var depois = Display.CurrentMode(dispositivo);
-            Console.WriteLine("  monitor durante: " + depois);
-            Conferir("a taxa do monitor mudou de fato", depois.Hz == motor.TargetHz,
-                     depois.Hz + " Hz (esperado " + motor.TargetHz + ")");
-            Conferir("a resolucao NAO mudou",
-                     depois.Width == modo.Width && depois.Height == modo.Height,
-                     depois.Width + "x" + depois.Height);
+            var after = Display.CurrentMode(device);
+            Console.WriteLine("  display during: " + after);
+            Check("the display rate really changed", after.Hz == engine.TargetHz,
+                     after.Hz + " Hz (expected " + engine.TargetHz + ")");
+            Check("the resolution did NOT change",
+                     after.Width == mode.Width && after.Height == mode.Height,
+                     after.Width + "x" + after.Height);
 
-            var cad = Cadence.Analyze(depois.Hz, 30);
-            Conferir("a cadencia ficou perfeita", cad.Perfect,
-                     string.Format("{0:F2} ms constante", cad.MinMs));
+            var cad = Cadence.Analyze(after.Hz, 30);
+            Check("the pacing came out perfect", cad.Perfect,
+                     string.Format("{0:F2} ms steady", cad.MinMs));
 
             // What the screen shows while active must be the display's REALITY,
             // not the prediction repeated back.
-            Conferir("a leitura ao vivo bate com o monitor de verdade",
-                     motor.CurrentPacing.Hz == depois.Hz,
-                     motor.CurrentPacing.Hz + " Hz");
+            Check("the live reading matches the real display",
+                     engine.CurrentPacing.Hz == after.Hz,
+                     engine.CurrentPacing.Hz + " Hz");
 
-            alvo.Refresh();
-            Conferir("prioridade do alvo subiu para alta",
-                     alvo.PriorityClass == ProcessPriorityClass.High, alvo.PriorityClass.ToString());
+            target.Refresh();
+            Check("target priority went up to high",
+                     target.PriorityClass == ProcessPriorityClass.High, target.PriorityClass.ToString());
 
             UIntPtr mascaraP; int lp, le;
             if (Cpu.Map(out mascaraP, out lp, out le))
             {
                 long esperado = (long)mascaraP.ToUInt64();
-                Conferir("alvo preso aos nucleos de desempenho",
-                         (long)alvo.ProcessorAffinity == esperado,
-                         "0x" + ((long)alvo.ProcessorAffinity).ToString("X") +
-                         " (esperado 0x" + esperado.ToString("X") + ")");
+                Check("target pinned to the performance cores",
+                         (long)target.ProcessorAffinity == esperado,
+                         "0x" + ((long)target.ProcessorAffinity).ToString("X") +
+                         " (expected 0x" + esperado.ToString("X") + ")");
             }
 
             double mn, mx, at;
             SysTimer.Query(out mn, out mx, out at);
-            Console.WriteLine(string.Format("  relogio durante: {0:F2} ms (pedido {1:F2} ms)",
+            Console.WriteLine(string.Format("  timer during: {0:F2} ms (requested {1:F2} ms)",
                               at, SysTimer.RequestedMs));
-            Conferir("o relogio foi pedido no mais fino", Math.Abs(SysTimer.RequestedMs - 0.5) < 1e-6, null);
+            Check("the timer was asked for at its finest", Math.Abs(SysTimer.RequestedMs - 0.5) < 1e-6, null);
 
             // ---------------------------------------------------- undo
-            Title("DESATIVAR");
-            motor.Deactivate("fim do teste");
+            Title("DEACTIVATE");
+            engine.Deactivate("end of test");
             Thread.Sleep(2500);
 
-            Conferir("motor ficou inativo", !motor.Active, null);
+            Check("engine became inactive", !engine.Active, null);
 
-            var voltou = Display.CurrentMode(dispositivo);
-            Console.WriteLine("  monitor depois: " + voltou);
-            Conferir("a taxa do monitor VOLTOU ao original", voltou.Hz == hzInicial,
-                     voltou.Hz + " Hz (original " + hzInicial + ")");
-            Conferir("a resolucao continua a mesma",
-                     voltou.Width == modo.Width && voltou.Height == modo.Height, null);
+            var restored = Display.CurrentMode(device);
+            Console.WriteLine("  display after: " + restored);
+            Check("the display rate went BACK to the original", restored.Hz == originalHz,
+                     restored.Hz + " Hz (original " + originalHz + ")");
+            Check("the resolution is unchanged",
+                     restored.Width == mode.Width && restored.Height == mode.Height, null);
 
-            alvo.Refresh();
-            Conferir("prioridade do alvo voltou", alvo.PriorityClass == prioridadeAntes,
-                     alvo.PriorityClass.ToString());
-            Conferir("afinidade do alvo voltou",
-                     (long)alvo.ProcessorAffinity == (long)afinidadeAntes,
-                     "0x" + ((long)alvo.ProcessorAffinity).ToString("X"));
+            target.Refresh();
+            Check("target priority restored", target.PriorityClass == priorityBefore,
+                     target.PriorityClass.ToString());
+            Check("target affinity restored",
+                     (long)target.ProcessorAffinity == (long)affinityBefore,
+                     "0x" + ((long)target.ProcessorAffinity).ToString("X"));
 
             // ---------------------------------------------------- target that dies
-            Title("ALVO QUE FECHA COM O PROGRAMA ATIVO");
-            motor.Config.SyncDisplay = false;      // sem piscar a tela de novo
-            motor.Activate();
-            Conferir("reativado", motor.Active, null);
-            alvo.Kill();
-            alvo.WaitForExit(4000);
+            Title("TARGET CLOSING WHILE ACTIVE");
+            engine.Config.SyncDisplay = false;      // sem piscar a tela de novo
+            engine.Activate();
+            Check("reactivated", engine.Active, null);
+            target.Kill();
+            target.WaitForExit(4000);
             Thread.Sleep(400);
-            motor.Watch();
-            Conferir("o motor percebeu e encerrou sozinho", !motor.Active, null);
-            alvo = null;
+            engine.Watch();
+            Check("the engine noticed and shut itself down", !engine.Active, null);
+            target = null;
 
             // ---------------------------------------------------- lock the display
-            Title("TRAVAR A TAXA DO MONITOR");
-            motor.CurrentTarget = null;
+            Title("LOCKING THE DISPLAY RATE");
+            engine.CurrentTarget = null;
 
-            var oferecidas = motor.DisplayRates;
-            Console.WriteLine("  varredura: " + string.Join(", ",
-                oferecidas.Select(t => t + "Hz").ToArray()));
-            Conferir("a varredura achou taxas", oferecidas.Count > 0, oferecidas.Count + " modos");
-            Conferir("nenhuma taxa abaixo de 60 Hz e oferecida",
-                     oferecidas.All(t => t >= 60), "minimo " + motor.MinHz);
-            Conferir("o maximo bate com a maior da lista",
-                     motor.MaxHz == oferecidas.Max(), motor.MaxHz + " Hz");
+            var offered = engine.DisplayRates;
+            Console.WriteLine("  scan: " + string.Join(", ",
+                offered.Select(t => t + "Hz").ToArray()));
+            Check("the scan found rates", offered.Count > 0, offered.Count + " modes");
+            Check("no rate below 60 Hz is offered",
+                     offered.All(t => t >= 60), "minimum " + engine.MinHz);
+            Check("the maximum matches the highest in the list",
+                     engine.MaxHz == offered.Max(), engine.MaxHz + " Hz");
 
-            string erroTrava;
-            int alvoTrava = oferecidas.First(t => t != hzInicial);
-            Conferir("travou em " + alvoTrava + " Hz", motor.Lock(alvoTrava, out erroTrava), erroTrava);
+            string lockError;
+            int lockTarget = offered.First(t => t != originalHz);
+            Check("locked at " + lockTarget + " Hz", engine.Lock(lockTarget, out lockError), lockError);
             Thread.Sleep(2200);
 
-            Conferir("o motor se diz travado", motor.RateLocked, null);
-            Conferir("LockedHz esta correto", motor.LockedHz == alvoTrava, motor.LockedHz.ToString());
-            var modoTravado = Display.CurrentMode(dispositivo);
-            Conferir("o monitor esta MESMO na taxa travada", modoTravado.Hz == alvoTrava,
-                     modoTravado.Hz + " Hz");
+            Check("the engine reports itself locked", engine.RateLocked, null);
+            Check("LockedHz is correct", engine.LockedHz == lockTarget, engine.LockedHz.ToString());
+            var lockedMode = Display.CurrentMode(device);
+            Check("the display is REALLY at the locked rate", lockedMode.Hz == lockTarget,
+                     lockedMode.Hz + " Hz");
 
             // change rate while the lock is already on
-            int segundoAlvo = oferecidas.First(t => t != alvoTrava && t != hzInicial);
-            Conferir("trocar para " + segundoAlvo + " Hz com a trava ligada",
-                     motor.Lock(segundoAlvo, out erroTrava), erroTrava);
+            int secondRate = offered.First(t => t != lockTarget && t != originalHz);
+            Check("switch to " + secondRate + " Hz with the lock on",
+                     engine.Lock(secondRate, out lockError), lockError);
             Thread.Sleep(2200);
-            Conferir("o monitor seguiu para a nova taxa",
-                     Display.CurrentMode(dispositivo).Hz == segundoAlvo,
-                     Display.CurrentMode(dispositivo).Hz + " Hz");
+            Check("the display followed to the new rate",
+                     Display.CurrentMode(device).Hz == secondRate,
+                     Display.CurrentMode(device).Hz + " Hz");
 
             // the watchdog restores the rate when something changes it underneath
-            Title("O VIGIA DA TRAVA");
-            string erroSabotagem;
-            Display.SetRate(dispositivo, modo.Width, modo.Height, hzInicial, out erroSabotagem);
+            Title("THE LOCK WATCHDOG");
+            string sabotageError;
+            Display.SetRate(device, mode.Width, mode.Height, originalHz, out sabotageError);
             Thread.Sleep(2200);
-            Conferir("sabotagem aplicada (mudei a taxa por fora)",
-                     Display.CurrentMode(dispositivo).Hz == hzInicial,
-                     Display.CurrentMode(dispositivo).Hz + " Hz");
-            motor.Watch();
+            Check("sabotage applied (rate changed from outside)",
+                     Display.CurrentMode(device).Hz == originalHz,
+                     Display.CurrentMode(device).Hz + " Hz");
+            engine.Watch();
             Thread.Sleep(2200);
-            Conferir("o vigia devolveu a taxa travada",
-                     Display.CurrentMode(dispositivo).Hz == segundoAlvo,
-                     Display.CurrentMode(dispositivo).Hz + " Hz");
+            Check("the watchdog restored the locked rate",
+                     Display.CurrentMode(device).Hz == secondRate,
+                     Display.CurrentMode(device).Hz + " Hz");
 
             // the manual lock takes precedence over the game sync
-            Title("TRAVA MANUAL x SINCRONIZACAO");
-            var alvo2 = Process.Start(new ProcessStartInfo(System.IO.Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory, "AlvoFalso.exe")) { UseShellExecute = false });
+            Title("MANUAL LOCK vs AUTOMATIC SYNC");
+            var target2 = Process.Start(new ProcessStartInfo(System.IO.Path.Combine(
+                AppDomain.CurrentDomain.BaseDirectory, "DummyTarget.exe")) { UseShellExecute = false });
             Thread.Sleep(1800);
-            motor.CurrentTarget = Target.List().FirstOrDefault(j => j.Pid == (uint)alvo2.Id);
-            Conferir("segundo alvo encontrado", motor.CurrentTarget != null, null);
+            engine.CurrentTarget = Target.List().FirstOrDefault(j => j.Pid == (uint)target2.Id);
+            Check("second target found", engine.CurrentTarget != null, null);
 
-            motor.Config.SyncDisplay = true;
-            motor.Config.RenderedFps = 30;
-            motor.Config.FgMultiplier = 1;
-            motor.Config.ChosenHz = 0;
-            Conferir("com a trava ligada, a previsao nao promete mudanca",
-                     motor.PredictedPacing.Hz == segundoAlvo,
-                     motor.PredictedPacing.Hz + " Hz");
+            engine.Config.SyncDisplay = true;
+            engine.Config.RenderedFps = 30;
+            engine.Config.FgMultiplier = 1;
+            engine.Config.ChosenHz = 0;
+            Check("with the lock on, the prediction promises no change",
+                     engine.PredictedPacing.Hz == secondRate,
+                     engine.PredictedPacing.Hz + " Hz");
 
-            motor.Activate();
+            engine.Activate();
             Thread.Sleep(2200);
-            Conferir("ativar NAO mexeu na taxa travada",
-                     Display.CurrentMode(dispositivo).Hz == segundoAlvo,
-                     Display.CurrentMode(dispositivo).Hz + " Hz");
-            Conferir("a trava continua de pe depois de ativar", motor.RateLocked, null);
+            Check("activating did NOT touch the locked rate",
+                     Display.CurrentMode(device).Hz == secondRate,
+                     Display.CurrentMode(device).Hz + " Hz");
+            Check("the lock still stands after activating", engine.RateLocked, null);
 
-            motor.Deactivate("fim do teste de trava");
+            engine.Deactivate("end of lock test");
             Thread.Sleep(2200);
-            Conferir("desativar NAO soltou a trava manual",
-                     motor.RateLocked && Display.CurrentMode(dispositivo).Hz == segundoAlvo,
-                     Display.CurrentMode(dispositivo).Hz + " Hz");
+            Check("deactivating did NOT release the manual lock",
+                     engine.RateLocked && Display.CurrentMode(device).Hz == secondRate,
+                     Display.CurrentMode(device).Hz + " Hz");
 
-            try { alvo2.Kill(); alvo2.WaitForExit(3000); } catch { }
-            motor.CurrentTarget = null;
+            try { target2.Kill(); target2.WaitForExit(3000); } catch { }
+            engine.CurrentTarget = null;
 
-            motor.Unlock();
+            engine.Unlock();
             Thread.Sleep(2200);
-            Conferir("destravar devolveu a taxa original",
-                     Display.CurrentMode(dispositivo).Hz == hzInicial,
-                     Display.CurrentMode(dispositivo).Hz + " Hz (original " + hzInicial + ")");
-            Conferir("o motor nao se diz mais travado", !motor.RateLocked, null);
+            Check("unlocking restored the original rate",
+                     Display.CurrentMode(device).Hz == originalHz,
+                     Display.CurrentMode(device).Hz + " Hz (original " + originalHz + ")");
+            Check("the engine no longer reports itself locked", !engine.RateLocked, null);
 
             // put the original target back for the rest of the test
-            motor.Config.SyncDisplay = true;
+            engine.Config.SyncDisplay = true;
 
             // ---------------------------------------------------- promise vs delivery
-            Title("O QUE A TELA PROMETE");
-            motor.Config.SyncDisplay = true;
-            Conferir("com a sincronia ligada, promete a taxa alvo",
-                     motor.PredictedPacing.Hz == motor.TargetHz,
-                     motor.PredictedPacing.Hz + " Hz");
+            Title("WHAT THE SCREEN PROMISES");
+            engine.Config.SyncDisplay = true;
+            Check("with sync on, it promises the target rate",
+                     engine.PredictedPacing.Hz == engine.TargetHz,
+                     engine.PredictedPacing.Hz + " Hz");
 
-            motor.Config.SyncDisplay = false;
-            Conferir("com a sincronia DESLIGADA, nao promete mudanca nenhuma",
-                     motor.PredictedPacing.Hz == motor.CurrentPacing.Hz,
-                     motor.PredictedPacing.Hz + " Hz (monitor em " + motor.CurrentPacing.Hz + ")");
-            motor.Config.SyncDisplay = true;
+            engine.Config.SyncDisplay = false;
+            Check("with sync OFF, it promises no change at all",
+                     engine.PredictedPacing.Hz == engine.CurrentPacing.Hz,
+                     engine.PredictedPacing.Hz + " Hz (display at " + engine.CurrentPacing.Hz + ")");
+            engine.Config.SyncDisplay = true;
 
             // ---------------------------------------------------- frame gen changes the math
-            Title("GERACAO DE QUADROS");
-            motor.Config.RenderedFps = 30;
-            motor.Config.FgMultiplier = 2;
-            Conferir("30 renderizados x2 = 60 na tela", motor.Config.FpsOnScreen == 60,
-                     motor.Config.FpsOnScreen.ToString());
-            int hzFg = Display.BestRate(motor.DisplayRates, motor.Config.FpsOnScreen);
-            Console.WriteLine("  com FG 2x o automatico pede: " + hzFg + " Hz");
-            Conferir("a taxa escolhida divide 60 exato", hzFg > 0 && hzFg % 60 == 0, hzFg + " Hz");
-            Conferir("com FG a conta muda mesmo",
-                     Display.BestRate(motor.DisplayRates, 30) != 0, null);
+            Title("FRAME GENERATION");
+            engine.Config.RenderedFps = 30;
+            engine.Config.FgMultiplier = 2;
+            Check("30 rendered x2 = 60 on screen", engine.Config.FpsOnScreen == 60,
+                     engine.Config.FpsOnScreen.ToString());
+            int fgRate = Display.BestRate(engine.DisplayRates, engine.Config.FpsOnScreen);
+            Console.WriteLine("  with FG 2x, auto asks for: " + fgRate + " Hz");
+            Check("the chosen rate divides 60 exactly", fgRate > 0 && fgRate % 60 == 0, fgRate + " Hz");
+            Check("frame gen really does change the math",
+                     Display.BestRate(engine.DisplayRates, 30) != 0, null);
 
-            motor.Config.FgMultiplier = 3;
-            Conferir("30 x3 = 90 na tela", motor.Config.FpsOnScreen == 90, motor.Config.FpsOnScreen.ToString());
+            engine.Config.FgMultiplier = 3;
+            Check("30 x3 = 90 on screen", engine.Config.FpsOnScreen == 90, engine.Config.FpsOnScreen.ToString());
 
             // ---------------------------------------------------- settings persist
-            Title("AJUSTES");
-            motor.Config.RenderedFps = 45;
-            motor.Config.FgMultiplier = 2;
-            motor.Config.ChosenHz = 120;
-            motor.Config.Save();
+            Title("SETTINGS");
+            engine.Config.RenderedFps = 45;
+            engine.Config.FgMultiplier = 2;
+            engine.Config.ChosenHz = 120;
+            engine.Config.Save();
             var lido = Settings.Load();
-            Conferir("FPS gravado e lido", lido.RenderedFps == 45, lido.RenderedFps.ToString());
-            Conferir("multiplicador gravado e lido", lido.FgMultiplier == 2, lido.FgMultiplier.ToString());
-            Conferir("Hz gravado e lido", lido.ChosenHz == 120, lido.ChosenHz.ToString());
+            Check("FPS saved and read back", lido.RenderedFps == 45, lido.RenderedFps.ToString());
+            Check("multiplier saved and read back", lido.FgMultiplier == 2, lido.FgMultiplier.ToString());
+            Check("Hz saved and read back", lido.ChosenHz == 120, lido.ChosenHz.ToString());
         }
         catch (Exception ex)
         {
             Console.WriteLine();
-            Console.WriteLine("EXCECAO: " + ex);
-            falhas++;
+            Console.WriteLine("EXCEPTION: " + ex);
+            failures++;
         }
         finally
         {
-            try { if (motor.Active) motor.Deactivate("limpeza"); } catch { }
+            try { if (engine.Active) engine.Deactivate("cleanup"); } catch { }
             try { SysTimer.Restore(); } catch { }
-            if (dispositivo != null)
+            if (device != null)
             {
-                var fim = Display.CurrentMode(dispositivo);
-                if (fim != null && hzInicial > 0 && fim.Hz != hzInicial)
+                var fim = Display.CurrentMode(device);
+                if (fim != null && originalHz > 0 && fim.Hz != originalHz)
                 {
-                    Console.WriteLine("  ATENCAO: restaurando o monitor a forca...");
-                    Display.Restore(dispositivo);
+                    Console.WriteLine("  WARNING: forcing the display back...");
+                    Display.Restore(device);
                 }
             }
-            try { if (alvo != null && !alvo.HasExited) alvo.Kill(); } catch { }
+            try { if (target != null && !target.HasExited) target.Kill(); } catch { }
 
             // restore the settings file exactly as it was
             try
             {
-                if (guardado != null) System.IO.File.WriteAllText(arquivoAjustes, guardado);
-                else if (System.IO.File.Exists(arquivoAjustes)) System.IO.File.Delete(arquivoAjustes);
-                Console.WriteLine("  ajustes do usuario restaurados.");
+                if (backup != null) System.IO.File.WriteAllText(settingsFile, backup);
+                else if (System.IO.File.Exists(settingsFile)) System.IO.File.Delete(settingsFile);
+                Console.WriteLine("  user settings restored.");
             }
             catch { }
         }
 
         Console.WriteLine();
         Console.WriteLine(new string('=', 64));
-        Console.WriteLine(falhas == 0 ? "PONTA A PONTA: TUDO PASSOU" : falhas + " FALHA(S)");
-        return falhas == 0 ? 0 : 1;
+        Console.WriteLine(failures == 0 ? "END TO END: ALL PASSED" : failures + " FAILURE(S)");
+        return failures == 0 ? 0 : 1;
     }
 }

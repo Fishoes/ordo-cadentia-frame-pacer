@@ -4,7 +4,7 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-static class AlvoFalso
+static class DummyTarget
 {
     [STAThread]
     static void Main()

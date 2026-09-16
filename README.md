@@ -151,9 +151,40 @@ not.
 
 </div>
 
+### With a click
+
 1. Go to the **[Releases](../../releases)** page and download
    `Instalar-OrdoCadentia.exe`.
 2. Run it. Pick your language, click Install.
+
+### From the terminal
+
+Paste this into PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/Fishoes/ordo-cadentia-frame-pacer/main/install.ps1 | iex
+```
+
+It downloads the latest release, installs it, creates the shortcuts and
+registers it with Windows — no windows to click.
+
+With options:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Fishoes/ordo-cadentia-frame-pacer/main/install.ps1))) -Language es
+```
+
+| Option | What it does |
+|---|---|
+| `-Language en` \| `pt` \| `es` | Sets the interface language. Without it, the program follows your Windows language. |
+| `-NoShortcuts` | Installs without creating desktop or Start menu shortcuts. |
+| `-Uninstall` | Removes it, including the registry entries and shortcuts. |
+
+> **On pasting `irm ... | iex`:** that command downloads a script and runs it,
+> which is worth being careful about — from any source, not just this one. The
+> script is [`install.ps1`](install.ps1) in this repository; it is short,
+> unobfuscated and commented, so read it first if you like. It installs into
+> your own user folder and never asks for administrator rights.
 
 It does not ask for administrator permission, and it does not install any
 drivers, services or background tasks. It does not start with Windows, and it

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity version="1.0.0.0" name="OrdoCadentia.Instalador" type="win32" />
-  <description>Ordo Cadentia — Instalador</description>
+  <assemblyIdentity version="1.0.0.0" name="OrdoCadentia.Installer" type="win32" />
+  <description>Ordo Cadentia — Installer</description>
 
-  <!-- asInvoker explicito: sem UAC, e sem a auto-elevacao por nome de arquivo. -->
+  <!-- Explicit asInvoker: no UAC, and no auto-elevation by filename heuristic. -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
