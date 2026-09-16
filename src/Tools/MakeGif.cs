@@ -3,6 +3,7 @@
 //
 //   MakeGif.exe demo      <OrdoCadentia.exe> <DummyTarget.exe> <out.gif>
 //   MakeGif.exe installer <Instalar-OrdoCadentia.exe>          <out.gif>
+//   MakeGif.exe compare   <game process name>                  <out.gif>
 //
 // Why it splices GIFs by hand: GDI+ can encode a GIF, but its SaveAdd path
 // offers no way to set a per-frame delay, so every frame would play at zero
@@ -34,8 +35,31 @@ static class MakeGif
                                                               int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern uint SendInput(uint n, INPUT[] inputs, int cb);
     delegate bool EnumProc(IntPtr h, IntPtr p);
     [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct INPUT { public uint Type; public KEYBDINPUT Key; public int Pad1, Pad2; }
+    [StructLayout(LayoutKind.Sequential)]
+    struct KEYBDINPUT
+    { public ushort Vk, Scan; public uint Flags; public uint Time; public IntPtr Extra; }
+
+    const uint InputKeyboard = 1;
+    const uint KeyScanCode = 0x0008, KeyUp = 0x0002;
+
+    // Games read the scan code rather than the virtual key, so send scan codes.
+    const ushort ScanW = 0x11, ScanLeftShift = 0x2A;
+
+    /// <summary>Presses or releases one key, the way a keyboard would.</summary>
+    static void Key(ushort scan, bool down)
+    {
+        var inp = new INPUT[1];
+        inp[0].Type = InputKeyboard;
+        inp[0].Key.Scan = scan;
+        inp[0].Key.Flags = KeyScanCode | (down ? 0u : KeyUp);
+        SendInput(1, inp, Marshal.SizeOf(typeof(INPUT)));
+    }
 
     const uint SWP_NOSIZE = 0x0001, SWP_NOZORDER = 0x0004, SWP_SHOWWINDOW = 0x0040;
     static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
@@ -379,8 +403,13 @@ static class MakeGif
 
     static void WriteGif(string path, List<Bitmap> frames, List<int> delaysMs)
     {
+        WriteGif(path, frames, delaysMs, 255);
+    }
+
+    static void WriteGif(string path, List<Bitmap> frames, List<int> delaysMs, int maxColors)
+    {
         Console.WriteLine("  building a shared palette...");
-        var palette = BuildPalette(frames, 255);
+        var palette = BuildPalette(frames, maxColors);
 
         var cache = new short[32768];
         for (int i = 0; i < cache.Length; i++) cache[i] = -1;
@@ -589,6 +618,387 @@ static class MakeGif
         }
     }
 
+    // ============================================================ comparison
+    // Before and after, on one real game, in one real scene.
+    //
+    // What a frame pacer changes is WHEN a frame reaches the screen, not what
+    // is in it. Both sides below show the same thirty frames per second of the
+    // same recording; the only difference is how long each one is held. That
+    // is the whole phenomenon, and it is why this cannot be shown at life
+    // speed: GIF delays are counted in hundredths of a second, and browsers
+    // round anything under two of them up to ten. So the real timing is played
+    // back twenty times slower. Every interval is divided by the same twenty --
+    // the unevenness is measured, not staged.
+
+    const int PanelW = 330, PanelH = 186;      // the game picture inside a panel
+    const int InfoH = 42;                      // the readout under it
+    const int SlowDown = 20;
+
+    // 165 does not divide by 30: 165/30 = 5.5, so a frame waits five refreshes,
+    // then six, then five. 120 does: 120/30 = 4, every single time.
+    const double HzBefore = 165.0, HzAfter = 120.0, GameFps = 30.0;
+
+    // 400 ms is a whole number of frames (12) and a whole number of both
+    // cadences, so the animation loops without a seam in the timing.
+    const int LoopMs = 400;
+
+    static readonly Color CanvasBg = Color.FromArgb(255, 13, 16, 14);
+    static readonly Color CardBg   = Color.FromArgb(255, 20, 24, 21);
+    static readonly Color EdgeCol  = Color.FromArgb(255, 44, 50, 44);
+    static readonly Color BoneCol  = Color.FromArgb(255, 214, 200, 166);
+    static readonly Color DustCol  = Color.FromArgb(255, 118, 113, 100);
+    static readonly Color EmberCol = Color.FromArgb(255, 226, 74, 54);
+    static readonly Color MossCol  = Color.FromArgb(255, 122, 160, 108);
+    static readonly Color GoldCol  = Color.FromArgb(255, 198, 160, 78);
+
+    /// <summary>Roughly how much two grabs differ. Zero means the game had not
+    /// drawn a new frame yet, so the sampler outran it.</summary>
+    static double Delta(Bitmap a, Bitmap b)
+    {
+        long sum = 0; int n = 0;
+        for (int y = 0; y < a.Height; y += 11)
+            for (int x = 0; x < a.Width; x += 11)
+            {
+                Color p = a.GetPixel(x, y), q = b.GetPixel(x, y);
+                sum += Math.Abs(p.R - q.R) + Math.Abs(p.G - q.G) + Math.Abs(p.B - q.B);
+                n++;
+            }
+        return (double)sum / Math.Max(1, n);
+    }
+
+    /// <summary>Grabs consecutive frames from a running game while nudging the
+    /// camera sideways, so the sequence contains motion. A still scene would
+    /// demonstrate nothing: holding a frame for 30 ms or for 36 ms looks
+    /// identical if the picture is not changing.</summary>
+    static List<Bitmap> CaptureGame(string processName, int samples, int pan, Rectangle crop,
+                                    int runWarmupMs)
+    {
+        var procs = Process.GetProcessesByName(processName);
+        if (procs.Length == 0)
+            throw new InvalidOperationException(processName + " is not running");
+        IntPtr win = procs[0].MainWindowHandle;
+
+        for (int i = 0; i < 12 && GetForegroundWindow() != win; i++)
+        { SetForegroundWindow(win); Thread.Sleep(120); }
+        if (GetForegroundWindow() != win)
+            throw new InvalidOperationException("could not bring " + processName + " to the front");
+        Thread.Sleep(700);
+
+        var shots = new List<Bitmap>();
+        bool running = runWarmupMs > 0;
+        try
+        {
+            if (running)
+            {
+                // Forward and dash together: the hunter puts the weapon away
+                // and breaks into a run. A character running is the clearest
+                // thing to watch for pacing -- the stride is a rhythm, so a
+                // frame arriving late is something you feel rather than
+                // something you have to be told about.
+                Key(ScanW, true);
+                Key(ScanLeftShift, true);
+                var warm = Stopwatch.StartNew();
+                while (warm.ElapsedMilliseconds < runWarmupMs)
+                {
+                    if (pan != 0) mouse_event(0x0001, pan, 0, 0, UIntPtr.Zero);
+                    Thread.Sleep(28);
+                }
+            }
+
+            // Sampling a little faster than the game draws guarantees every
+            // drawn frame is seen; the repeats get dropped afterwards.
+            var clock = Stopwatch.StartNew();
+            for (int i = 0; i < samples; i++)
+            {
+                var bmp = new Bitmap(crop.Width, crop.Height, PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(bmp))
+                    g.CopyFromScreen(crop.X, crop.Y, 0, 0, crop.Size, CopyPixelOperation.SourceCopy);
+                shots.Add(bmp);
+
+                if (pan != 0) mouse_event(0x0001, pan, 0, 0, UIntPtr.Zero);
+
+                long wait = (i + 1) * 28L - clock.ElapsedMilliseconds;
+                if (wait > 0) Thread.Sleep((int)wait);
+            }
+            Console.WriteLine("  {0} samples in {1} ms", shots.Count, clock.ElapsedMilliseconds);
+        }
+        finally
+        {
+            // Whatever happens, do not leave a key stuck down in someone's game.
+            if (running) { Key(ScanLeftShift, false); Key(ScanW, false); }
+        }
+        return shots;
+    }
+
+    /// <summary>Drops repeated grabs, then returns the run of frames whose
+    /// motion is steadiest -- a constant pan reads as pacing, while a sword
+    /// swing reads as a sword swing.</summary>
+    static List<Bitmap> PickSteadiest(List<Bitmap> shots, int want)
+    {
+        var distinct = new List<Bitmap>();
+        var step = new List<double>();
+        foreach (var s in shots)
+        {
+            if (distinct.Count == 0) { distinct.Add(s); continue; }
+            double d = Delta(distinct[distinct.Count - 1], s);
+            if (d < 1.0) { s.Dispose(); continue; }
+            distinct.Add(s); step.Add(d);
+        }
+        Console.WriteLine("  {0} distinct frames", distinct.Count);
+
+        // A hunter who has run into a wall still animates a little, so a low
+        // count is the tell: the run was against scenery and is worth nothing
+        // as a demonstration of motion.
+        if (distinct.Count < want * 2)
+        {
+            Console.WriteLine("  too few -- the hunter was probably stuck");
+            foreach (var b in distinct) b.Dispose();
+            return null;
+        }
+
+        int bestAt = 0; double bestSpread = double.MaxValue;
+        for (int i = 0; i + want <= distinct.Count; i++)
+        {
+            double mean = 0; int n = 0;
+            for (int k = i; k < i + want - 1 && k < step.Count; k++) { mean += step[k]; n++; }
+            mean /= Math.Max(1, n);
+            double var2 = 0;
+            for (int k = i; k < i + want - 1 && k < step.Count; k++)
+                var2 += (step[k] - mean) * (step[k] - mean);
+            double spread = Math.Sqrt(var2 / Math.Max(1, n)) / Math.Max(1.0, mean);
+            if (mean > 4.0 && spread < bestSpread) { bestSpread = spread; bestAt = i; }
+        }
+        if (bestSpread == double.MaxValue)
+        {
+            Console.WriteLine("  no run with steady motion in this take");
+            foreach (var b in distinct) b.Dispose();
+            return null;
+        }
+        Console.WriteLine("  steadiest run starts at frame {0}", bestAt);
+
+        var picked = new List<Bitmap>();
+        for (int i = 0; i < distinct.Count; i++)
+        {
+            if (i >= bestAt && i < bestAt + want)
+            {
+                var small = new Bitmap(PanelW, PanelH, PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(small))
+                using (var attrs = new ImageAttributes())
+                {
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                    // A quarter-size thumbnail of a dim cave, squeezed into 255
+                    // colours, turns to mud. The gamma lift is there so the
+                    // scene can be read at this size; it changes brightness,
+                    // never timing, and timing is the whole claim being made.
+                    attrs.SetGamma(0.85f);
+                    g.DrawImage(distinct[i], new Rectangle(0, 0, PanelW, PanelH),
+                                0, 0, distinct[i].Width, distinct[i].Height,
+                                GraphicsUnit.Pixel, attrs);
+                }
+                picked.Add(small);
+            }
+            distinct[i].Dispose();
+        }
+        return picked;
+    }
+
+    // ------------------------------------------------------------ the canvas
+    static void Right(Graphics g, string s, Font f, Brush b, float right, float y)
+    {
+        float w = g.MeasureString(s, f).Width;
+        g.DrawString(s, f, b, right - w, y);
+    }
+
+    /// <summary>Draws one moment in time: both panels, their readouts, and the
+    /// shared timeline underneath with a playhead.</summary>
+    static Bitmap Compose(Bitmap leftShot, Bitmap rightShot, double now,
+                          double[] startBefore, double[] dwellBefore,
+                          double[] startAfter, double[] dwellAfter,
+                          int idxBefore, int idxAfter)
+    {
+        const int W = 700, H = 412;
+        const int PanX0 = 12, PanX1 = 358, PanY = 48;
+        const int TlLabel = 12, TlX = 82, TlRight = 688;
+        const int RowA = 288, RowB = 314, RowH = 18;
+
+        // The numbers below are drawn on a machine whose locale writes 33,3
+        // rather than 33.3, and the picture is in English wherever it is read.
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+
+        var bmp = new Bitmap(W, H, PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(bmp))
+        using (var title = new Font("Segoe UI", 10.5f, FontStyle.Bold))
+        using (var small = new Font("Segoe UI", 8f))
+        using (var tiny = new Font("Segoe UI", 7.5f))
+        using (var label = new Font("Segoe UI", 9f, FontStyle.Bold))
+        using (var big = new Font("Segoe UI", 12.5f, FontStyle.Bold))
+        using (var bone = new SolidBrush(BoneCol))
+        using (var dust = new SolidBrush(DustCol))
+        using (var ember = new SolidBrush(EmberCol))
+        using (var moss = new SolidBrush(MossCol))
+        using (var gold = new SolidBrush(GoldCol))
+        using (var card = new SolidBrush(CardBg))
+        using (var edge = new Pen(EdgeCol))
+        {
+            g.Clear(CanvasBg);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+            g.SmoothingMode = SmoothingMode.None;
+
+            // ---- header
+            g.DrawString("ORDO CADENTIA", title, gold, PanX0, 10);
+            g.DrawString("Monster Hunter: World at 30 FPS, with VSync — the same frames, two displays",
+                         small, dust, PanX0 + 122, 15);
+            Right(g, "SLOWED 20×", label, dust, TlRight, 13);
+            g.DrawLine(edge, PanX0, 40, TlRight, 40);
+
+            // ---- the two panels
+            for (int side = 0; side < 2; side++)
+            {
+                int x = side == 0 ? PanX0 : PanX1;
+                Bitmap shot = side == 0 ? leftShot : rightShot;
+                Brush accent = side == 0 ? ember : moss;
+                double hz = side == 0 ? HzBefore : HzAfter;
+                double ms = side == 0 ? dwellBefore[idxBefore] : dwellAfter[idxAfter];
+                int refreshes = (int)Math.Round(ms / (1000.0 / hz));
+
+                g.DrawImage(shot, x, PanY, PanelW, PanelH);
+                g.FillRectangle(card, x, PanY + PanelH, PanelW, InfoH);
+                g.DrawRectangle(edge, x, PanY, PanelW - 1, PanelH + InfoH - 1);
+
+                int ty = PanY + PanelH + 5;
+                g.DrawString(side == 0 ? "BEFORE · 165 Hz" : "AFTER · 120 Hz locked",
+                             label, accent, x + 9, ty);
+                g.DrawString(side == 0
+                        ? "5 refreshes, then 6, then 5..."
+                        : "4 refreshes, every single frame",
+                             tiny, dust, x + 9, ty + 18);
+                Right(g, ms.ToString("0.0", inv) + " ms", big, bone, x + PanelW - 9, ty + 1);
+                Right(g, refreshes + " × " + (1000.0 / hz).ToString("0.00", inv) + " ms",
+                      tiny, dust, x + PanelW - 9, ty + 21);
+            }
+
+            // ---- the shared timeline: both cadences against the same clock
+            double scale = (TlRight - TlX) / (double)LoopMs;
+            g.DrawString("165 Hz", tiny, ember, TlLabel, RowA + 3);
+            g.DrawString("120 Hz", tiny, moss, TlLabel, RowB + 3);
+
+            for (int side = 0; side < 2; side++)
+            {
+                double[] st = side == 0 ? startBefore : startAfter;
+                double[] dw = side == 0 ? dwellBefore : dwellAfter;
+                int live = side == 0 ? idxBefore : idxAfter;
+                int y = side == 0 ? RowA : RowB;
+                Color acc = side == 0 ? EmberCol : MossCol;
+
+                for (int i = 0; i < st.Length; i++)
+                {
+                    int bx = TlX + (int)Math.Round(st[i] * scale);
+                    int bw = Math.Max(2, (int)Math.Round(dw[i] * scale) - 2);
+                    bool done = i < live, isNow = i == live;
+                    Color fill = isNow ? acc
+                               : done ? Color.FromArgb(255, acc.R / 3 + 18, acc.G / 3 + 18, acc.B / 3 + 18)
+                                      : Color.FromArgb(255, 26, 30, 27);
+                    using (var br = new SolidBrush(fill))
+                        g.FillRectangle(br, bx, y, bw, RowH);
+                }
+            }
+
+            int px = TlX + (int)Math.Round(now * scale);
+            using (var head = new Pen(Color.FromArgb(230, 214, 200, 166)))
+                g.DrawLine(head, px, RowA - 6, px, RowB + RowH + 6);
+
+            g.DrawString("one block = one frame on screen; its width is how long it stayed there",
+                         tiny, dust, TlX, RowB + RowH + 10);
+
+            // ---- footer
+            g.DrawLine(edge, PanX0, H - 42, TlRight, H - 42);
+            g.DrawString("A frame can only appear on a refresh. 165 ÷ 30 = 5.5, so they alternate 30.3 ms and 36.4 ms.",
+                         small, dust, PanX0, H - 36);
+            g.DrawString("Ordo Cadentia locks the display to 120 Hz. 120 ÷ 30 = 4, so every frame lasts 33.3 ms.",
+                         small, bone, PanX0, H - 19);
+        }
+        return bmp;
+    }
+
+    static int RecordComparison(string processName, string output, int pan)
+    {
+        // Framed on the hunter, clear of the minimap, the quest list and the
+        // prompts in the corners. Astera is full of ropes, posts and lantern
+        // chains, which is exactly what motion is easiest to read against.
+        var crop = new Rectangle(460, 370, 980, 552);
+        int frames = (int)Math.Round(LoopMs / 1000.0 * GameFps);       // 12
+
+        Console.WriteLine("recording " + processName + "...");
+        List<Bitmap> game = null;
+        for (int attempt = 1; attempt <= 4 && game == null; attempt++)
+        {
+            Console.WriteLine("  take {0}", attempt);
+            // Each retry runs longer and turns harder, which is what gets the
+            // hunter off whatever she has run into.
+            var shots = CaptureGame(processName, 48, pan + (attempt - 1) * 6,
+                                    crop, 1800 + attempt * 900);
+            game = PickSteadiest(shots, frames);
+        }
+        if (game == null)
+        {
+            Console.WriteLine("could not get a clean run; move the hunter to open ground");
+            return 1;
+        }
+
+        // When each side puts a frame up, and for how long.
+        double refBefore = 1000.0 / HzBefore, refAfter = 1000.0 / HzAfter;
+        var startBefore = new double[frames]; var dwellBefore = new double[frames];
+        var startAfter = new double[frames]; var dwellAfter = new double[frames];
+        double t = 0;
+        for (int i = 0; i < frames; i++)
+        {
+            // 5.5 refreshes per frame cannot happen, so it is 5 then 6.
+            dwellBefore[i] = refBefore * (i % 2 == 0 ? 5 : 6);
+            startBefore[i] = t; t += dwellBefore[i];
+        }
+        t = 0;
+        for (int i = 0; i < frames; i++)
+        {
+            dwellAfter[i] = refAfter * 4;
+            startAfter[i] = t; t += dwellAfter[i];
+        }
+
+        // One rendered frame per moment where either side changes.
+        var moments = new List<double>();
+        foreach (var s in startBefore) moments.Add(s);
+        foreach (var s in startAfter) moments.Add(s);
+        moments.Sort();
+        var events = new List<double>();
+        foreach (var m in moments)
+            if (events.Count == 0 || m - events[events.Count - 1] > 0.5) events.Add(m);
+
+        var canvas = new List<Bitmap>();
+        var delays = new List<int>();
+        for (int e = 0; e < events.Count; e++)
+        {
+            double now = events[e];
+            int ib = 0, ia = 0;
+            for (int i = 0; i < frames; i++) if (startBefore[i] <= now + 0.5) ib = i;
+            for (int i = 0; i < frames; i++) if (startAfter[i] <= now + 0.5) ia = i;
+
+            canvas.Add(Compose(game[ib], game[ia], now,
+                               startBefore, dwellBefore, startAfter, dwellAfter, ib, ia));
+
+            double next = e + 1 < events.Count ? events[e + 1] : LoopMs;
+            delays.Add((int)Math.Round((next - now) * SlowDown));
+        }
+        Console.WriteLine("  {0} rendered frames, {1:F1} s of playback",
+                          canvas.Count, LoopMs * SlowDown / 1000.0);
+
+        WriteGif(output, canvas, delays, 160);
+        foreach (var b in canvas) b.Dispose();
+        foreach (var b in game) b.Dispose();
+        Console.WriteLine("  wrote {0} ({1} KB)", output, new FileInfo(output).Length / 1024);
+        return 0;
+    }
+
     // ================================================================ main
     static int Main(string[] args)
     {
@@ -598,9 +1008,13 @@ static class MakeGif
             return RecordDemo(args[1], args[2], args[3]);
         if (args.Length >= 3 && args[0] == "installer")
             return RecordInstaller(args[1], args[2]);
+        if (args.Length >= 3 && args[0] == "compare")
+            return RecordComparison(args[1], args[2],
+                                    args.Length >= 4 ? int.Parse(args[3]) : 14);
 
         Console.WriteLine("usage: MakeGif.exe demo      <app.exe> <target.exe> <out.gif>");
         Console.WriteLine("       MakeGif.exe installer <installer.exe>        <out.gif>");
+        Console.WriteLine("       MakeGif.exe compare   <game process name>    <out.gif> [camera pan]");
         return 2;
     }
 }

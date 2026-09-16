@@ -55,6 +55,22 @@ number to divide by 30.
 **Ordo Cadentia switches your monitor to a number that divides evenly while you
 play, and puts it back exactly how it was when you are done.**
 
+<div align="center">
+
+<img src="docs/pacing-comparison.gif" alt="The same 30 FPS at 165 Hz and at 120 Hz" width="760">
+
+<sub>The same run, the same 30 FPS, the same PC. On the left a frame is on screen
+for 30.3 ms, then 36.4, then 30.3 — that unevenness is what you feel. On the
+right the display is locked to 120 Hz and every frame lasts 33.3 ms.</sub>
+
+<sub><b>About this picture:</b> the game footage is real, captured at 30 FPS from
+Monster Hunter: World. The two cadences are the refresh arithmetic above, played
+back <b>20× slower than life</b> — a GIF counts its delays in hundredths of a
+second, so it cannot replay 165 Hz, and no screen recording can capture what a
+panel does between refreshes anyway. Every interval is divided by the same 20.</sub>
+
+</div>
+
 ---
 
 ## What it does
